@@ -165,11 +165,16 @@ namespace build {
                 continue;
             }
 
-            std::ostringstream commmand;
+            std::ostringstream command;
             // clang++ -c -o main.o main.cpp
-            commmand << target.compilerCommandMap.cppCompiler << " " << target.compilerCommandMap.compileOnly << " " << target.compilerCommandMap.compilerOutput << (objectOutputDirectory/object) << " " << source;
-            std::filesystem::path tmp = std::filesystem::temp_directory_path() / "buildcpptmp.txt";
-            int result = system(commmand.str().c_str());
+            command << target.compilerCommandMap.cppCompiler << " " << target.compilerCommandMap.compileOnly << " " << target.compilerCommandMap.compilerOutput << (objectOutputDirectory/object) << " " << source;
+
+            for (const auto& include : target.includeDirectories)
+            {
+                command << " " << target.compilerCommandMap.includeDirectory << include;
+            }
+
+            int result = system(command.str().c_str());
             if (result != 0)
             {
                 std::cerr << "Failed to build: " << source << ", exiting\n";
@@ -190,6 +195,15 @@ namespace build {
             command << target.compilerCommandMap.cppLinker << " " << target.compilerCommandMap.linkerOutput << target.name;
 
             // TODO Add linking to static libraries
+            for (const auto& libDirectory : target.libraryDirectories)
+            {
+                command << " " << target.compilerCommandMap.libraryDirectory << libDirectory;
+            }
+
+            for (const auto& lib : target.libraries)
+            {
+                command << " " << target.compilerCommandMap.library << lib;
+            }
 
             for (const auto& object : objects)
             {
