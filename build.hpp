@@ -61,7 +61,8 @@ namespace build {
         std::string define;
         
         // Linker options
-        std::string linker;
+        std::string cLinker;
+        std::string cppLinker;
         std::string linkerOutput;
         std::string libraryDirectory;
         std::string library;
@@ -77,6 +78,12 @@ namespace build {
         .compilerOutput = "-o",
         .includeDirectory = "-I",
         .define = "-D",
+
+        .cLinker = "clang",
+        .cppLinker = "clang++",
+        .linkerOutput = "-o",
+        .libraryDirectory = "-L",
+        .library = "-l",
 
         .compileOnly = "-c",
 
@@ -94,6 +101,8 @@ namespace build {
         
         // TODO finish filling this out
     };
+    
+    // TODO Create a CompilerCommandMap for MSVC
 
 //// Implementation
     static Os GetOs()
@@ -139,7 +148,7 @@ namespace build {
 
         /// Compiling
         std::cout << "Building target: " << target.name << "\n";
-        std::vector<std::filesystem::path> objects; 
+        std::vector<std::string> objects; 
         for (const std::string& source : target.sources)
         {
             std::cout << "Compiling " << source << "\n";
@@ -151,6 +160,7 @@ namespace build {
 
             if (objectLastWrite >= std::filesystem::last_write_time(source))
             {
+                objects.push_back(objectOutputDirectory / object);
                 std::cout << source << " is up to date, skipping\n";
                 continue;
             }
@@ -165,14 +175,56 @@ namespace build {
                 std::cerr << "Failed to build: " << source << ", exiting\n";
                 return result;
             }
-            objects.emplace_back(objectOutputDirectory / object);
+            objects.push_back(objectOutputDirectory / object);
             std::cout << "Successfully compiled " << source << "\n";
+        }
+        std::cout << "Successfully compiled target: " << target.name << "\n";
+
+
+        // Linking
+        // This part should only run when building an executable
+        if (target.type == TargetType::Executable)
+        {
+            std::cout << "Linking target: " << target.name << "\n";
+            std::ostringstream command;
+            command << target.compilerCommandMap.cppLinker << " " << target.compilerCommandMap.linkerOutput << target.name;
+
+            // TODO Add linking to static libraries
+
+            for (const auto& object : objects)
+            {
+                command << " " << object;
+            }
+            
+            std::cout << command.str() << "\n";
+            int result = system(command.str().c_str());
+            if (result != 0)
+            {
+                std::cerr << "Failed to link: " << target.name << ", exiting\n";
+                return result;
+            }
+            std::cout << "Successfully linked target: " << target.name << "\n";
+            return 0;
+        }
+
+        // TODO Add support for compiling static libraries
+        if (target.type == TargetType::StaticLibrary)
+        {
+            std::cerr << "Compiling static libraries is not supported yet...\n";
+            return 1;
+        }
+
+
+        // TODO Add support for compiling shared libraries
+        if (target.type == TargetType::SharedLibrary)
+        {
+            std::cerr << "Compiling shared libraries is not supported yet...\n";
+            return 1;
         }
 
         return 0;
     }
 
-    // TODO Create a CompilerCommandMap for MSVC
 
 }
 
